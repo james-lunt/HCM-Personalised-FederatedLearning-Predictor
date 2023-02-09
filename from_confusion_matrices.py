@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-with open("variables/log.pkl", "rb") as f:
+with open("variables/LCO_FL_VallD_Seed2.pkl", "rb") as f:
     data = pickle.load(f)
 
 confusion_mat = data['final_confusion_matrices']

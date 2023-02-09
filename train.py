@@ -302,13 +302,13 @@ def local_train(dataset, model, opt, criterion, device, epoch, fold, test=False)
         # model_copy = model_copy.send(worker)
         if config['cvtype'] == 'LCO':
             training_loader, validation_loader, _ = dl.load(fold_index=fold) # fold index is irrelevant in this case
+            print(training_loader)
             if test:
                 _, _, test_loader = dl.load(fold_index=fold, LCO_FL_test=True) # this way it will load the entire center as test set
         else:
             training_loader, validation_loader, test_loader = dl.load(fold_index=fold)
         if test:
             _, _, predictions, epoch_losses, epoch_accuracies, epoch_cm = run_epoch(test_loader, model_copy, opt_copy, criterion, device, is_training = False, epoch=epoch, worker=worker)
-            torch.cuda.empty_cache()
             #### Log
             with open(VARIABLE_STORAGE.joinpath('log.pkl'), 'rb') as handle:
                 log_dict = pickle.load(handle)
@@ -324,7 +324,9 @@ def local_train(dataset, model, opt, criterion, device, epoch, fold, test=False)
             val_losses.append(epoch_losses)
             accuracy_scores_v.append(epoch_accuracies)
             confusion_m.append(epoch_cm)
-            local_predictions.append(predictions)
+            local_predictions.append(predictions) #MESHMESH I think we only care about the performance of Global model so perhaps get rid of this
+            print("Printing Local Predictions after run_epoch with test loader, Line 327") 
+            print(local_predictions)
             continue # skip the rest if test mode
 
         # Validation comes before training, because we want to use the combined model.
@@ -333,12 +335,16 @@ def local_train(dataset, model, opt, criterion, device, epoch, fold, test=False)
         val_losses.append(epoch_losses)
         accuracy_scores_v.append(epoch_accuracies)
         confusion_m.append(epoch_cm)
-        local_predictions.append(predictions)
+        local_predictions.append(predictions) # MESHMESH Or this
+        print("Printing Local Predictions after run_epoch with validation loader, Line 338")
+        print(local_predictions)
 
         if epoch == config['hyperparameters']['num_epochs']:
             continue # skip training if last epoch (it's the final evaluation)
 
         model_copy, opt_copy, _, epoch_losses, epoch_accuracies, _ = run_epoch(training_loader, model_copy, opt_copy, criterion, device, is_training = True, epoch=epoch, worker=worker)
+        torch.cuda.empty_cache()
+
         
         train_losses.append(epoch_losses) #this is an approximation
 
@@ -414,8 +420,11 @@ def run_epoch(loader, model, opt, criterion, device, is_training, epoch, worker=
     predictions = pd.DataFrame() 
 
     for i, batch in enumerate(tqdm(loader)):
+        print(i)
+        print(batch)
         torch.cuda.empty_cache()
         inputs, targets, code = prepare_batch(batch, device)
+        print(type(inputs))
         if config['model']['arch']['dimensionality'] == '3D':
             inputs = Variable(inputs.float(), requires_grad=True).to(device)
         elif config['model']['arch']['dimensionality'] == '2D':
@@ -444,15 +453,18 @@ def run_epoch(loader, model, opt, criterion, device, is_training, epoch, worker=
         #MESHMESH
         opt.zero_grad()
         preds = model(inputs)
+        print(preds)
         if len(preds.shape)>1:
             if preds.shape[1]==1: # binary classification
                 preds = preds.squeeze(1)
                 targets = targets.float()
         loss = criterion(preds, targets)#((preds - targets)**2).sum()
+        #print(preds)
+        print(targets)
         if is_training:
             loss.backward()
             opt.step()
-
+        #MESHMESH
         # if is_federated:
         #     loss = loss.get()
         epoch_losses.append(loss.item())
@@ -651,7 +663,6 @@ if __name__=='__main__':
             model = Model(**config['model']['arch']['args'])
         else:
             model = Model()
-        print(model)
 
         if config['model']['pretrained']['isTrue']:
             model.load_state_dict(torch.load(config['model']['pretrained']['weights']), strict=False)
