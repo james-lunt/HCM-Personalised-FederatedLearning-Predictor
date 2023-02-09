@@ -1,0 +1,19 @@
+paths:
+    ACDC:
+        raw: Documents/5th year/Dissertation/HCM Diagnosis/federated-HCM-diagnosis/src/preprocessing/Datasets/ACDC
+        processed:  Documents/5th year/Dissertation/HCM Diagnosis/federated-HCM-diagnosis/src/preprocessing/Datasets/ACDC/Processed
+    dataset: Documents/5th year/Dissertation/HCM Diagnosis/federated-HCM-diagnosis/src/preprocessing/Datasets/MnM/NewProcessed 
+    raw_dataset: Documents/5th year/Dissertation/HCM Diagnosis/federated-HCM-diagnosis/src/preprocessing/Datasets/MnM/Original
+    experiments: .
+    misc: misc
+
+"https://download.pytorch.org/models/r3d_18-b3b3357e.pth" to /root/.cache/torch/checkpoints/r3d_18-b3b3357e.pth
+
+paths:
+    ACDC:
+        raw: Datasets/ACDC
+        processed:  Datasets/ACDC/Processed
+    dataset: Datasets/MnM/NewProcessed 
+    raw_dataset: Datasets/MnM/Original
+    experiments: experiments
+    misc: /experiment/misc
