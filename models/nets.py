@@ -14,6 +14,8 @@ with open(config_file) as file:
 
 class ResNet3D_18_Classifier(nn.Sequential):
     def __init__(self, pretrained, in_ch, out_ch, linear_ch=512, seed=None, early_layers_learning_rate=0):
+        #MESHMESH
+        seed = None
         '''
         in_ch = 1 or 3
         early_layers can be 'freeze' or 'lower_lr'
