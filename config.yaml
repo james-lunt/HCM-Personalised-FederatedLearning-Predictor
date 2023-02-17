@@ -5,9 +5,9 @@ test_without_hist: False # this will turn off histogramStandardization for test 
 cvtype: LCO #cross validation type (LCO (Leave Center Out) vs CCV (Collaborative Cross Validation))
 hyperparameters:
     num_epochs : 100
-    iteration_number: 30 # this will define the number of batches when doing federated (we want the same number of iterations)
+    iteration_number: 21 # this will define the number of batches when doing federated (we want the same number of iterations)
     training_batch_size : 3  # for centralized
-    test_batch_size : 2 #use a higher one for speed up if CUDA memory allows  
+    test_batch_size : 3 #use a higher one for speed up if CUDA memory allows  
     criterion : torch.nn.BCELoss
     optimizer : torch.optim.Adam
     lr : 0.01
@@ -48,7 +48,7 @@ data:
     labels: [0,1]
     transformations: B # N, B, S, I, SI (none, basic, shape, intensity, shape&intensity)
 federated:
-    isTrue: True
+    isTrue: False
     type: FL
     averaging: SSP # EV, SSP, SSRP (equal vote/sample size proportional/reverse proportional)
 names:
