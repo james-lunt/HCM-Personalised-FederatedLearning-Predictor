@@ -115,7 +115,7 @@ def train(model, dataset, opt, criterion, fold, device, num_epochs=100, fold_spl
                         trainval_set[train_center] = dataset[train_center]
                 else:
                     trainval_set = dataset
-                local_models, local_opts, local_weights, predictions, train_loss_avg, val_loss_avg, val_accuracy_avg, confusion_m  = local_train(trainval_set, model, opt, criterion, device, epoch=epoch, fold=fold)
+                local_models, local_opts, local_weights, predictions, train_loss_avg, val_loss_avg, val_accuracy_avg, confusion_m  = local_train(trainval_set, model, opt, criterion, device, fold=fold)
 
                 # average models
                 if config['federated']['type'] != 'CIIL':
@@ -159,10 +159,10 @@ def train(model, dataset, opt, criterion, fold, device, num_epochs=100, fold_spl
                 ## Centralized ===========================================================================
                 dl = dataset
                 training_loader, validation_loader, test_loader = dl.load(fold_index=fold)
-                model, opt, _, epoch_losses, _, _ = run_epoch(training_loader, model, opt, criterion, device, epoch=epoch, is_training = True)
+                model, opt, _, epoch_losses, _, _ = run_epoch(training_loader, model, opt, criterion, device, is_training = True)
                 
                 train_loss_avg = np.mean(epoch_losses)
-                _, _, predictions, epoch_losses, epoch_accuracies, confusion_m = run_epoch(validation_loader, model, opt, criterion, device, epoch=epoch, is_training = False)
+                _, _, predictions, epoch_losses, epoch_accuracies, confusion_m = run_epoch(validation_loader, model, opt, criterion, device, is_training = False)
 
                 val_loss_avg = np.mean(epoch_losses)
                 val_accuracy_avg = np.mean(epoch_accuracies)
@@ -220,20 +220,20 @@ def train(model, dataset, opt, criterion, fold, device, num_epochs=100, fold_spl
             test_set = {test_index: dataset[test_index]}
         else:
             test_set = dataset
-        _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix  = local_train(test_set, model, opt, criterion, device, epoch=best_epoch, fold=fold, test=True)
+        _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix  = local_train(test_set, model, opt, criterion, device, fold=fold, test=True)
         ## Distributed =============================================================================
     else:
         ## Centralized ===========================================================================
         dl = dataset
         _, _, test_loader = dl.load(fold_index=fold)
-        _, _, test_predictions, _, epoch_accuracies, test_confusion_matrix = run_epoch(test_loader, model, opt, criterion, device, epoch=best_epoch, is_training = False)
+        _, _, test_predictions, _, epoch_accuracies, test_confusion_matrix = run_epoch(test_loader, model, opt, criterion, device, is_training = False)
 
         test_accuracy_avg = np.mean(epoch_accuracies)
     
 
     return train_losses, val_losses, test_predictions, test_confusion_matrix, test_accuracy_avg
 
-def local_train(dataset, model, opt, criterion, device, epoch, fold, test=False):
+def local_train(dataset, model, opt, criterion, device, fold, test=False):
     """This function is used for Federated Learning
 
     Args:
@@ -307,7 +307,7 @@ def local_train(dataset, model, opt, criterion, device, epoch, fold, test=False)
         else:
             training_loader, validation_loader, test_loader = dl.load(fold_index=fold)
         if test:
-            _, _, predictions, epoch_losses, epoch_accuracies, epoch_cm = run_epoch(test_loader, model_copy, opt_copy, criterion, device, is_training = False, epoch=epoch, worker=worker)
+            _, _, predictions, epoch_losses, epoch_accuracies, epoch_cm = run_epoch(fold, test_loader, model_copy, opt_copy, criterion, device, is_training = False, worker=worker)
             #### Log
             with open(VARIABLE_STORAGE.joinpath('log.pkl'), 'rb') as handle:
                 log_dict = pickle.load(handle)
@@ -327,16 +327,14 @@ def local_train(dataset, model, opt, criterion, device, epoch, fold, test=False)
             continue # skip the rest if test mode
 
         # Validation comes before training, because we want to use the combined model.
-        _, _, predictions, epoch_losses, epoch_accuracies, epoch_cm = run_epoch(validation_loader, model_copy, opt_copy, criterion, device, is_training = False, epoch=epoch, worker=worker)
+        _, _, predictions, epoch_losses, epoch_accuracies, epoch_cm = run_epoch(fold, validation_loader, model_copy, opt_copy, criterion, device, is_training = False, worker=worker)
         
         val_losses.append(epoch_losses)
         accuracy_scores_v.append(epoch_accuracies)
         confusion_m.append(epoch_cm)
         local_predictions.append(predictions) # MESHMESH Or this
-        if epoch == config['hyperparameters']['num_epochs']:
-            continue # skip training if last epoch (it's the final evaluation)
 
-        model_copy, opt_copy, _, epoch_losses, epoch_accuracies, _ = run_epoch(training_loader, model_copy, opt_copy, criterion, device, is_training = True, epoch=epoch, worker=worker)
+        model_copy, opt_copy, _, epoch_losses, epoch_accuracies, _ = run_epoch(fold, training_loader, model_copy, opt_copy, criterion, device, is_training = True, worker=worker)
         torch.cuda.empty_cache()
 
         
@@ -377,15 +375,13 @@ def local_train(dataset, model, opt, criterion, device, epoch, fold, test=False)
     if config['federated']['type'] == 'CIIL': # we just need the final model
         local_models = model_copy
         
-    if epoch == config['hyperparameters']['num_epochs']:
-        local_models, local_opts, train_losses = None, None, None
     else:
         train_losses = [item for sublist in train_losses for item in sublist] # unfold
         train_losses = np.mean(train_losses)
 
     return local_models, local_opts, local_weights, local_predictions, train_losses, val_losses, accuracy_scores_v, confusion_matrix
 
-def run_epoch(loader, model, opt, criterion, device, is_training, epoch, worker=None):
+def run_epoch(fold, loader, model, opt, criterion, device, is_training, worker=None):
     """run a single epoch
 
     Args:
@@ -433,12 +429,6 @@ def run_epoch(loader, model, opt, criterion, device, is_training, epoch, worker=
             raise ValueError(f"Invalid dimensionality for model: {config['model']['arch']['dimensionality']}. Check your config file.")
 
         targets = Variable(targets).to(device)
-        if epoch == 1 and i == 0:
-            with open(VARIABLE_STORAGE.joinpath('log.pkl'), 'rb') as handle:
-                log_dict = pickle.load(handle)
-            log_dict['sample_batch'] = inputs
-            with open(VARIABLE_STORAGE.joinpath('log.pkl'), 'wb') as handle:
-                pickle.dump(log_dict, handle, protocol=pickle.HIGHEST_PROTOCOL) 
         # if is_federated:
         #     inputs = inputs.send(worker)
         #     targets = targets.send(worker)
@@ -469,9 +459,9 @@ def run_epoch(loader, model, opt, criterion, device, is_training, epoch, worker=
             epoch_cm = None
 
         if config['cvtype'] == 'LCO':
-            predictions = predictions.append(pd.DataFrame({'predictions': preds.data.cpu(), 'targets': targets.cpu(), 'test_center': config['data']['centres'][0]}, index=code))
+            predictions = predictions.append(pd.DataFrame({'predictions': preds.data.cpu(), 'targets': targets.cpu(), 'test_center': config['data']['centres'][fold]}, index=code))
         else:
-            predictions = predictions.append(pd.DataFrame({'predictions': preds.data.cpu(), 'targets': targets.cpu(), 'fold': 0}, index=code))
+            predictions = predictions.append(pd.DataFrame({'predictions': preds.data.cpu(), 'targets': targets.cpu(), 'fold': fold}, index=code))
     # if not is_training:
     #     img_grid = torchvision.utils.make_grid(inputs[:,0,...,0].unsqueeze(1), normalize=True, scale_each=True)
     #     writer_train.add_image('MRI scans', img_grid, global_step=epoch)
