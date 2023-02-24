@@ -48,7 +48,7 @@ data:
     labels: [0,1]
     transformations: B # N, B, S, I, SI (none, basic, shape, intensity, shape&intensity)
 federated:
-    isTrue: False
+    isTrue: True
     type: FL
     averaging: SSP # EV, SSP, SSRP (equal vote/sample size proportional/reverse proportional)
 names:
