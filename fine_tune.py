@@ -20,13 +20,11 @@ with open(config_file) as file:
   config = yaml.safe_load(file)
 
 model_storage = "../Model Epochs/"
-without_vall = 'epoch_39_lco_vall'
-fold = 0 #0 Vall 1 Sag 2 ACDC 3 San
+without_vall = 'epoch_18_lco_acdc'
+fold = 2 #0 Vall 1 Sag 2 ACDC 3 San
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device = 'cuda'
-start_epoc = 0
-num_epochs = 3
 
 
 #Start Model
@@ -91,17 +89,16 @@ def set_crit_opt(model):
         opt = Opt(model.parameters(), lr=learning_rate)
     return criterion, opt
 
-def fine_tune_local_train(model,data,opt,criterion,fold_splits,start_epoch,num_epochs):
-    for epoch in range(start_epoch, num_epochs+1):
-        dataset = data
-        fold_splits = fold_splits[fold]
-        if not config['federated']['type'] in ['CIIL', 'SWA']:
-            model.to('cpu')
-        if config['cvtype'] == 'LCO':
-            test_index = fold_splits[1]
-            print(test_index)
-            test_set = {test_index: dataset[test_index]}
-        return local_train(test_set, model, opt, criterion, device, fold=fold, test=False)
+def fine_tune_local_train(model,data,opt,criterion,fold_splits):
+    dataset = data
+    fold_splits = fold_splits[fold]
+    if not config['federated']['type'] in ['CIIL', 'SWA']:
+        model.to('cpu')
+    if config['cvtype'] == 'LCO':
+        test_index = fold_splits[1]
+        print(test_index)
+        test_set = {test_index: dataset[test_index]}
+    return local_train(test_set, model, opt, criterion, device, fold=fold, test=False)
 
 """def log_store():
     ## Log / Store ======================================================================
@@ -170,12 +167,16 @@ if __name__=='__main__':
     model = load_model()
     data, fold_splits = load_data()
     criterion, opt = set_crit_opt(model)
-    #model_new = fine_tune_local_train(model,data,opt,criterion,fold_splits,0,1)
-    model_new, opt_new = fine_tune(model,data,opt,criterion,fold_splits,0,2)
-    #model_new = model_new[0][0]
-    _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model_new,opt_new,criterion,fold_splits)
-    print(test_predictions)
-    print(test_confusion_matrix)
+    model_new = model
+    opt_new = opt
+    for i in range(0,2):
+        model_new,opt_new,_,_,_,_,_,_ = fine_tune_local_train(model_new,data,opt_new,criterion,fold_splits)
+    #model_new, opt_new = fine_tune(model,data,opt,criterion,fold_splits,0,2)
+        model_new = model_new[0]
+        opt_new = opt_new[0]
+        _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model_new,opt_new,criterion,fold_splits)
+        print(test_predictions)
+        print(test_confusion_matrix)
     #_, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
     #print(test_predictions)
     #print(test_confusion_matrix)
