@@ -1,9 +1,11 @@
 import importlib
 import torch
 import yaml
+import numpy as np
 from pathlib import Path
 from data_loader import MultiDataLoader 
-from train_copy import local_train
+from train_copy import local_train,run_epoch
+#from train_copy import run_epoch
 from tqdm import tqdm
 from from_confusion_matrices import metrics_from_confusion_matrices
 import pandas as pd
@@ -23,6 +25,8 @@ fold = 0 #0 Vall 1 Sag 2 ACDC 3 San
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device = 'cuda'
+start_epoc = 0
+num_epochs = 3
 
 
 #Start Model
@@ -87,17 +91,72 @@ def set_crit_opt(model):
         opt = Opt(model.parameters(), lr=learning_rate)
     return criterion, opt
 
-def fine_tune(model,data,opt,criterion,fold_splits):
-    #Test
-    dataset = data
-    fold_splits = fold_splits[fold]
-    if not config['federated']['type'] in ['CIIL', 'SWA']:
-        model.to('cpu')
-    if config['cvtype'] == 'LCO':
-        test_index = fold_splits[1]
-        print(test_index)
-        test_set = {test_index: dataset[test_index]}
-    return local_train(test_set, model, opt, criterion, device, fold=fold, test=False)
+"""def fine_tune(model,data,opt,criterion,fold_splits,start_epoch,num_epochs):
+    for epoch in range(start_epoch, num_epochs+1):
+        dataset = data
+        fold_splits = fold_splits[fold]
+        if not config['federated']['type'] in ['CIIL', 'SWA']:
+            model.to('cpu')
+        if config['cvtype'] == 'LCO':
+            test_index = fold_splits[1]
+            print(test_index)
+            test_set = {test_index: dataset[test_index]}
+        return local_train(test_set, model, opt, criterion, device, fold=fold, test=False)"""
+
+"""def log_store():
+    ## Log / Store ======================================================================
+    if train_loss_avg != None: # Last epoch for federated is None
+        print(f'''
+        ========================================================
+        Epoch {epoch} finished
+        Training loss: {train_loss_avg:0.3f}
+        Validation loss: {val_loss_avg:0.3f}, accuracy score:
+        {val_accuracy_avg:0.3f}
+        ========================================================''')
+        
+        train_losses.append(train_loss_avg)
+    val_losses.append(val_loss_avg)
+    confusion_matrices.append(confusion_m)
+    validation_predictions = validation_predictions.append(predictions)
+    ## Log / Store ======================================================================
+    if val_loss_avg < best_loss:
+        best_epoch = epoch
+        best_loss = val_loss_avg
+        best_model = initialize_model(device, model.state_dict()) # get a copy of the best model
+    elif early_stop_counter == config['hyperparameters']['early_stop_counter']: 
+        print("Reached early stop checkpoint")
+        break
+    else:
+        early_stop_counter+=1"""
+
+
+def fine_tune(model,data,opt,criterion,fold_splits,start_epoch,num_epochs):
+    for epoch in range(start_epoch, num_epochs):
+        print("Hello")
+        dl = data["ACDC"][1]
+        training_loader, validation_loader, test_loader = dl.load(fold_index=fold)
+        #model, opt, _, epoch_losses, _, _ = run_epoch(training_loader, model, opt, criterion, device, is_training = True)
+        print(dl)
+        print(training_loader)
+        model, opt, _, epoch_losses, _, _ = run_epoch(fold,training_loader, model=model, opt=opt, criterion=criterion, device=device,is_training = True)
+        
+        train_loss_avg = np.mean(epoch_losses)
+        print(validation_loader)
+        _, _, predictions, epoch_losses, epoch_accuracies, confusion_m = run_epoch(fold,validation_loader, model=model, opt=opt, criterion=criterion, device=device,is_training = False)
+
+        val_loss_avg = np.mean(epoch_losses)
+        val_accuracy_avg = np.mean(epoch_accuracies)
+
+        if train_loss_avg != None: # Last epoch for federated is None
+            print(f'''
+            ========================================================
+            Epoch {epoch} finished
+            Training loss: {train_loss_avg:0.3f}
+            Validation loss: {val_loss_avg:0.3f}, accuracy score:
+            {val_accuracy_avg:0.3f}
+            ========================================================''')
+            
+    return model
 
 def test(data,model,opt,criterion,fold_splits):
     #Test
@@ -114,13 +173,13 @@ if __name__=='__main__':
     model = load_model()
     data, fold_splits = load_data()
     criterion, opt = set_crit_opt(model)
-    model_new, _, _, _, _, _, _, _ = fine_tune(model,data,opt,criterion,fold_splits)
-    model_new = model_new[0]
+    model_new = fine_tune(model,data,opt,criterion,fold_splits,0,10)
+    #model_new = model_new[0]
     _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model_new,opt,criterion,fold_splits)
     print(test_predictions)
     print(test_confusion_matrix)
-    _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
-    print(test_predictions)
-    print(test_confusion_matrix)
+    #_, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
+    #print(test_predictions)
+    #print(test_confusion_matrix)
     #acc_list, precision, recall, f1_scores = metrics_from_confusion_matrices(test_confusion_matrix)
 
