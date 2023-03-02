@@ -153,7 +153,7 @@ def fine_tune(model,data,opt,criterion,fold_splits,start_epoch,num_epochs):
             {val_accuracy_avg:0.3f}
             ========================================================''')
             
-    return model
+    return model, opt
 
 def test(data,model,opt,criterion,fold_splits):
     #Test
@@ -171,12 +171,13 @@ if __name__=='__main__':
     data, fold_splits = load_data()
     criterion, opt = set_crit_opt(model)
     #model_new = fine_tune_local_train(model,data,opt,criterion,fold_splits,0,1)
+    model_new, opt_new = fine_tune(model,data,opt,criterion,fold_splits,0,2)
     #model_new = model_new[0][0]
-    #_, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model_new,opt,criterion,fold_splits)
-    #print(test_predictions)
-    #print(test_confusion_matrix)
-    _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
+    _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model_new,opt_new,criterion,fold_splits)
     print(test_predictions)
     print(test_confusion_matrix)
+    #_, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
+    #print(test_predictions)
+    #print(test_confusion_matrix)
     #acc_list, precision, recall, f1_scores = metrics_from_confusion_matrices(test_confusion_matrix)
 
