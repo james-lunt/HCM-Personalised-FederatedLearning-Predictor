@@ -20,8 +20,8 @@ with open(config_file) as file:
   config = yaml.safe_load(file)
 
 model_storage = "../Model Epochs/"
-without_vall = 'epoch_18_lco_acdc'
-fold = 2 #0 Vall 1 Sag 2 ACDC 3 San
+without_vall = 'epoch_26_lco_sagrada'
+fold = 1 #0 Vall 1 Sag 2 ACDC 3 San
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device = 'cuda'
@@ -131,12 +131,11 @@ def fine_tune(model,data,opt,criterion,fold_splits,start_epoch,num_epochs):
     for epoch in range(start_epoch, num_epochs):
         print("Hello")
         dl = data["ACDC"][1]
-        training_loader, validation_loader, test_loader = dl.load(fold_index=fold)
-        #model, opt, _, epoch_losses, _, _ = run_epoch(training_loader, model, opt, criterion, device, is_training = True)
+        training_loader, validation_loader, _ = dl.load(fold_index=fold)
         model, opt, _, epoch_losses, _, _ = run_epoch(fold,training_loader, model=model, opt=opt, criterion=criterion, device=device,is_training = True)
         
         train_loss_avg = np.mean(epoch_losses)
-        _, _, predictions, epoch_losses, epoch_accuracies, confusion_m = run_epoch(fold,validation_loader, model=model, opt=opt, criterion=criterion, device=device,is_training = False)
+        _, _, _, epoch_losses, epoch_accuracies, _= run_epoch(fold,validation_loader, model=model, opt=opt, criterion=criterion, device=device,is_training = False)
 
         val_loss_avg = np.mean(epoch_losses)
         val_accuracy_avg = np.mean(epoch_accuracies)
@@ -169,13 +168,12 @@ if __name__=='__main__':
     criterion, opt = set_crit_opt(model)
     model_new = model
     opt_new = opt
-    for i in range(0,2):
+    for i in range(0,3):
         model_new,opt_new,_,_,_,_,_,_ = fine_tune_local_train(model_new,data,opt_new,criterion,fold_splits)
     #model_new, opt_new = fine_tune(model,data,opt,criterion,fold_splits,0,2)
         model_new = model_new[0]
         opt_new = opt_new[0]
         _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model_new,opt_new,criterion,fold_splits)
-        print(test_predictions)
         print(test_confusion_matrix)
     #_, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
     #print(test_predictions)
