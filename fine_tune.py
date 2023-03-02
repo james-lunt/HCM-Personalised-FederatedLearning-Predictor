@@ -91,7 +91,7 @@ def set_crit_opt(model):
         opt = Opt(model.parameters(), lr=learning_rate)
     return criterion, opt
 
-"""def fine_tune(model,data,opt,criterion,fold_splits,start_epoch,num_epochs):
+def fine_tune_local_train(model,data,opt,criterion,fold_splits,start_epoch,num_epochs):
     for epoch in range(start_epoch, num_epochs+1):
         dataset = data
         fold_splits = fold_splits[fold]
@@ -101,7 +101,7 @@ def set_crit_opt(model):
             test_index = fold_splits[1]
             print(test_index)
             test_set = {test_index: dataset[test_index]}
-        return local_train(test_set, model, opt, criterion, device, fold=fold, test=False)"""
+        return local_train(test_set, model, opt, criterion, device, fold=fold, test=False)
 
 """def log_store():
     ## Log / Store ======================================================================
@@ -136,12 +136,9 @@ def fine_tune(model,data,opt,criterion,fold_splits,start_epoch,num_epochs):
         dl = data["ACDC"][1]
         training_loader, validation_loader, test_loader = dl.load(fold_index=fold)
         #model, opt, _, epoch_losses, _, _ = run_epoch(training_loader, model, opt, criterion, device, is_training = True)
-        print(dl)
-        print(training_loader)
         model, opt, _, epoch_losses, _, _ = run_epoch(fold,training_loader, model=model, opt=opt, criterion=criterion, device=device,is_training = True)
         
         train_loss_avg = np.mean(epoch_losses)
-        print(validation_loader)
         _, _, predictions, epoch_losses, epoch_accuracies, confusion_m = run_epoch(fold,validation_loader, model=model, opt=opt, criterion=criterion, device=device,is_training = False)
 
         val_loss_avg = np.mean(epoch_losses)
@@ -173,13 +170,13 @@ if __name__=='__main__':
     model = load_model()
     data, fold_splits = load_data()
     criterion, opt = set_crit_opt(model)
-    model_new = fine_tune(model,data,opt,criterion,fold_splits,0,10)
-    #model_new = model_new[0]
-    _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model_new,opt,criterion,fold_splits)
-    print(test_predictions)
-    print(test_confusion_matrix)
-    #_, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
+    #model_new = fine_tune_local_train(model,data,opt,criterion,fold_splits,0,1)
+    #model_new = model_new[0][0]
+    #_, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model_new,opt,criterion,fold_splits)
     #print(test_predictions)
     #print(test_confusion_matrix)
+    _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
+    print(test_predictions)
+    print(test_confusion_matrix)
     #acc_list, precision, recall, f1_scores = metrics_from_confusion_matrices(test_confusion_matrix)
 
