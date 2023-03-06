@@ -20,8 +20,8 @@ with open(config_file) as file:
   config = yaml.safe_load(file)
 
 model_storage = "../Model Epochs/"
-without_vall = 'epoch_26_lco_sagrada'
-fold = 1 #0 Vall 1 Sag 2 ACDC 3 San
+without_vall = 'epoch_18_lco_acdc'
+fold = 2 #0 Vall 1 Sag 2 ACDC 3 San
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device = 'cuda'
@@ -100,31 +100,10 @@ def fine_tune_local_train(model,data,opt,criterion,fold_splits):
         test_set = {test_index: dataset[test_index]}
     return local_train(test_set, model, opt, criterion, device, fold=fold, test=False)
 
-"""def log_store():
-    ## Log / Store ======================================================================
-    if train_loss_avg != None: # Last epoch for federated is None
-        print(f'''
-        ========================================================
-        Epoch {epoch} finished
-        Training loss: {train_loss_avg:0.3f}
-        Validation loss: {val_loss_avg:0.3f}, accuracy score:
-        {val_accuracy_avg:0.3f}
-        ========================================================''')
-        
-        train_losses.append(train_loss_avg)
-    val_losses.append(val_loss_avg)
-    confusion_matrices.append(confusion_m)
-    validation_predictions = validation_predictions.append(predictions)
-    ## Log / Store ======================================================================
-    if val_loss_avg < best_loss:
-        best_epoch = epoch
-        best_loss = val_loss_avg
-        best_model = initialize_model(device, model.state_dict()) # get a copy of the best model
-    elif early_stop_counter == config['hyperparameters']['early_stop_counter']: 
-        print("Reached early stop checkpoint")
-        break
-    else:
-        early_stop_counter+=1"""
+def freeze_layers(model):
+    for param in model.parameters():
+        param.requires_grad = False
+    return model
 
 
 def fine_tune(model,data,opt,criterion,fold_splits,start_epoch,num_epochs):
@@ -164,19 +143,21 @@ def test(data,model,opt,criterion,fold_splits):
 
 if __name__=='__main__':
     model = load_model()
+    #model = freeze_layers(model)
     data, fold_splits = load_data()
     criterion, opt = set_crit_opt(model)
     model_new = model
     opt_new = opt
-    for i in range(0,3):
+    _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
+    print(test_confusion_matrix)
+
+    for i in range(0,10):
         model_new,opt_new,_,_,_,_,_,_ = fine_tune_local_train(model_new,data,opt_new,criterion,fold_splits)
     #model_new, opt_new = fine_tune(model,data,opt,criterion,fold_splits,0,2)
         model_new = model_new[0]
         opt_new = opt_new[0]
         _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model_new,opt_new,criterion,fold_splits)
         print(test_confusion_matrix)
-    #_, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
     #print(test_predictions)
-    #print(test_confusion_matrix)
     #acc_list, precision, recall, f1_scores = metrics_from_confusion_matrices(test_confusion_matrix)
 
