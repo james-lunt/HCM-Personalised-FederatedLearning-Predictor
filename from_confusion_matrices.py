@@ -21,4 +21,13 @@ def metrics_from_confusion_matrices(confusion_matrices):
         f1_scores.append(f1)
 
     return acc_list, precision, recall, f1_scores
+
+from sklearn.metrics import confusion_matrix
+
+# Example confusion matrix
+y_true = np.array([0, 1, 0, 1, 1, 0])
+y_pred = np.array([1, 1, 0, 1, 0, 0])
+cm = confusion_matrix(y_true, y_pred)
+print(cm.shape)
+metrics_from_confusion_matrices(cm)
 print(metrics_from_confusion_matrices(confusion_mat))

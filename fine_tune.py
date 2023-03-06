@@ -7,7 +7,6 @@ from data_loader import MultiDataLoader
 from train_copy import local_train,run_epoch
 #from train_copy import run_epoch
 from tqdm import tqdm
-from from_confusion_matrices import metrics_from_confusion_matrices
 import pandas as pd
 # Permanently changes the pandas settings
 pd.set_option('display.max_rows', None)
@@ -20,7 +19,7 @@ with open(config_file) as file:
   config = yaml.safe_load(file)
 
 model_storage = "../Model Epochs/"
-without_vall = 'epoch_18_lco_acdc'
+without_vall = 'epoch_27_ccv'
 fold = 2 #0 Vall 1 Sag 2 ACDC 3 San
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -89,6 +88,19 @@ def set_crit_opt(model):
         opt = Opt(model.parameters(), lr=learning_rate)
     return criterion, opt
 
+def log_and_save(epoch, train_loss_avg, val_loss_avg, val_accuracy_avg,confusion_matrix):
+    if train_loss_avg != None: # Last epoch for federated is None
+        print(f'''
+        ========================================================
+        Epoch {epoch} finished
+        Training loss: {train_loss_avg:0.3f}
+        Validation loss: {val_loss_avg:0.3f}, accuracy score:
+        {val_accuracy_avg:0.3f}
+        ========================================================''')
+    print("Confusion Matrix: ")
+    print(confusion_m)
+    'Might put F1 score in here'
+
 def fine_tune_local_train(model,data,opt,criterion,fold_splits):
     dataset = data
     fold_splits = fold_splits[fold]
@@ -105,30 +117,6 @@ def freeze_layers(model):
         param.requires_grad = False
     return model
 
-
-def fine_tune(model,data,opt,criterion,fold_splits,start_epoch,num_epochs):
-    for epoch in range(start_epoch, num_epochs):
-        print("Hello")
-        dl = data["ACDC"][1]
-        training_loader, validation_loader, _ = dl.load(fold_index=fold)
-        model, opt, _, epoch_losses, _, _ = run_epoch(fold,training_loader, model=model, opt=opt, criterion=criterion, device=device,is_training = True)
-        
-        train_loss_avg = np.mean(epoch_losses)
-        _, _, _, epoch_losses, epoch_accuracies, _= run_epoch(fold,validation_loader, model=model, opt=opt, criterion=criterion, device=device,is_training = False)
-
-        val_loss_avg = np.mean(epoch_losses)
-        val_accuracy_avg = np.mean(epoch_accuracies)
-
-        if train_loss_avg != None: # Last epoch for federated is None
-            print(f'''
-            ========================================================
-            Epoch {epoch} finished
-            Training loss: {train_loss_avg:0.3f}
-            Validation loss: {val_loss_avg:0.3f}, accuracy score:
-            {val_accuracy_avg:0.3f}
-            ========================================================''')
-            
-    return model, opt
 
 def test(data,model,opt,criterion,fold_splits):
     #Test
@@ -148,16 +136,10 @@ if __name__=='__main__':
     criterion, opt = set_crit_opt(model)
     model_new = model
     opt_new = opt
-    _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model,opt,criterion,fold_splits)
-    print(test_confusion_matrix)
 
-    for i in range(0,10):
-        model_new,opt_new,_,_,_,_,_,_ = fine_tune_local_train(model_new,data,opt_new,criterion,fold_splits)
-    #model_new, opt_new = fine_tune(model,data,opt,criterion,fold_splits,0,2)
+    for epoch in range(0,30):
+        model_new,opt_new,_, _, train_loss_avg, val_loss_avg, val_accuracy_avg, confusion_m = fine_tune_local_train(model_new,data,opt_new,criterion,fold_splits)
         model_new = model_new[0]
         opt_new = opt_new[0]
-        _, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test(data,model_new,opt_new,criterion,fold_splits)
-        print(test_confusion_matrix)
-    #print(test_predictions)
-    #acc_list, precision, recall, f1_scores = metrics_from_confusion_matrices(test_confusion_matrix)
+        log_and_save(epoch,train_loss_avg,val_loss_avg,val_accuracy_avg,confusion_m)
 

@@ -400,7 +400,6 @@ def run_epoch(fold, loader, model, opt, criterion, device, is_training, worker=N
         log of epoch losses / accuracy
     """
 
-    is_federated = config['federated']['isTrue']
     if not is_training:
         model.eval()
 
