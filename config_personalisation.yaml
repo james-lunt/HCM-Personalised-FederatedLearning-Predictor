@@ -2,6 +2,11 @@ num_epochs: 30  #Number of epochs to fine tune
 early_stop_checkpoint: 10
 input_model_storage: "../Model Epochs/"
 output_model_storage: "../Result Models/"
+
+model_storage: "../Model Epochs/"
+lco_model: "epoch_39_lco_vall"
+test_center_fold: 0 #0 Vall 1 Sag 2 ACDC 3 San. Used when testing on whole center
+
 data:
     centres:
         - "Vall d'Hebron" 

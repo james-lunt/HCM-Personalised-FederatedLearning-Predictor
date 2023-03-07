@@ -19,9 +19,9 @@ config_file = Path('config_personalisation.yaml')
 with open(config_file) as file:
   config = yaml.safe_load(file)
 
-model_storage = "../Model Epochs/"
-without_vall = 'epoch_39_lco_vall'
-fold = 0 #0 Vall 1 Sag 2 ACDC 3 San
+model_storage = config['model_storage']
+test_model = config['lco_model']
+fold = config['test_center_fold']
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device = 'cuda'
@@ -33,6 +33,8 @@ def import_class(name):
     module = importlib.import_module(module_name)
     return getattr(module, class_name)
 
+
+#Loads model weights from pretrained model
 def initialize_model(device, state_dict=None):
     Model = import_class(config['model']['arch']['function'])
     if config['model']['arch']['args']:
@@ -46,16 +48,20 @@ def initialize_model(device, state_dict=None):
     model_copy.to(device)
     return model_copy
 
+
+#Loads the pretrained the model or initialises a new one
 def load_model():
     if config['train_private']: 
         Model = import_class(config['model']['arch']['function'])
         model = Model(**config['model']['arch']['args'])
         print("Training without Global Model")
     else: 
-        checkpoint = torch.load(model_storage + without_vall)['state_dict']
+        checkpoint = torch.load(model_storage + test_model)['state_dict']
         model = initialize_model(device, checkpoint)
     return model
 
+
+#Uses data_loader.py to load datasets into objects seperated by center
 def load_data():
     data = {} 
     fold_splits = []
@@ -69,6 +75,8 @@ def load_data():
         fold_splits.append((train_indices, test_indices))
     return data, fold_splits
 
+
+#Sets the criterion and optimiser for the model
 def set_crit_opt(model):
     #Criterion & Optimiser
     Criterion = import_class(config['hyperparameters']['criterion']) #torch.nn.BCELoss
@@ -95,7 +103,7 @@ def set_crit_opt(model):
     return criterion, opt
 
 
-
+#Prints the result metrics every epoch adn updates early stop counter
 def log_results(epoch,train_loss,val_loss,val_accuracy,confusion_matrix, best_model_results,best_model,early_stop_counter):
     if train_loss != None: # Last epoch for federated is None
         print(f'''
@@ -120,7 +128,7 @@ def log_results(epoch,train_loss,val_loss,val_accuracy,confusion_matrix, best_mo
     return best_model_results, best_model, early_stop_counter
     
 
-
+#Saves the model produced by the epoch with the best generalisation
 def save_best_model(best_model, best_epoch, results_path):
     torch.save({'epoch': best_epoch,
                 'state_dict': best_model.cpu().state_dict(),
@@ -157,7 +165,7 @@ if __name__=='__main__':
 
     #_, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test_on_center(data,model_new,opt_new,criterion,fold_splits) #Tests on a full center
 
-   for epoch in range(0,num_epochs):
+    for epoch in range(0,num_epochs):
         model_new,opt_new,_, _, train_loss, val_loss, val_accuracy, confusion_m = fine_tune_local_train(model_new,data,opt_new,criterion,fold_splits)
         model_new = model_new[0]
         opt_new = opt_new[0]
