@@ -4,8 +4,9 @@ input_model_storage: "../Model Epochs/"
 output_model_storage: "../Result Models/"
 
 model_storage: "../Model Epochs/"
-lco_model: "epoch_39_lco_vall"
-test_center_fold: 0 #0 Vall 1 Sag 2 ACDC 3 San. Used when testing on whole center
+lco_model: "epoch_27_ccv"
+validation_center_fold: 0 #0 Vall 1 Sag 2 ACDC 3 San. Used when testing on whole center
+
 
 data:
     centres:
@@ -34,4 +35,4 @@ hyperparameters:
     optimizer : torch.optim.Adam
     lr : 0.01
 
-train_private: True #Makes the program train a fresh model on one center
+train_private: False #Makes the program train a fresh model on one center
