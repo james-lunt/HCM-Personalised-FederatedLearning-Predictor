@@ -14,13 +14,14 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', -1)
 
-config_file = Path('config.yaml')
+
+config_file = Path('config_personalisation.yaml')
 with open(config_file) as file:
   config = yaml.safe_load(file)
 
 model_storage = "../Model Epochs/"
-without_vall = 'epoch_27_ccv'
-fold = 2 #0 Vall 1 Sag 2 ACDC 3 San
+without_vall = 'epoch_39_lco_vall'
+fold = 0 #0 Vall 1 Sag 2 ACDC 3 San
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device = 'cuda'
@@ -46,20 +47,25 @@ def initialize_model(device, state_dict=None):
     return model_copy
 
 def load_model():
-    checkpoint = torch.load(model_storage + without_vall)['state_dict']
-    model = initialize_model(device, checkpoint)
+    if config['train_private']: 
+        Model = import_class(config['model']['arch']['function'])
+        model = Model(**config['model']['arch']['args'])
+        print("Training without Global Model")
+    else: 
+        checkpoint = torch.load(model_storage + without_vall)['state_dict']
+        model = initialize_model(device, checkpoint)
     return model
 
 def load_data():
     data = {} 
     fold_splits = []
     for centre in config['data']['centres']:
-        worker = centre # sy.VirtualWorker(hook, id=centre) # remove comment when they fix the bug
-        dl = MultiDataLoader([centre]) # replace with two way split instead
+        worker = centre 
+        dl = MultiDataLoader([centre])
         data[centre]=(worker, dl)
-    for i, centre in enumerate(data.keys()): # will be used to index over centers 
+    for i, centre in enumerate(data.keys()):
         test_indices = centre
-        train_indices = [x for j,x in enumerate(data.keys()) if j!=i] # The validation comes out of the centers we train on
+        train_indices = [x for j,x in enumerate(data.keys()) if j!=i] 
         fold_splits.append((train_indices, test_indices))
     return data, fold_splits
 
@@ -88,58 +94,80 @@ def set_crit_opt(model):
         opt = Opt(model.parameters(), lr=learning_rate)
     return criterion, opt
 
-def log_and_save(epoch, train_loss_avg, val_loss_avg, val_accuracy_avg,confusion_matrix):
-    if train_loss_avg != None: # Last epoch for federated is None
+
+
+def log_results(epoch,train_loss,val_loss,val_accuracy,confusion_matrix, best_model_results,best_model,early_stop_counter):
+    if train_loss != None: # Last epoch for federated is None
         print(f'''
         ========================================================
         Epoch {epoch} finished
-        Training loss: {train_loss_avg:0.3f}
-        Validation loss: {val_loss_avg:0.3f}, accuracy score:
-        {val_accuracy_avg:0.3f}
+        Training loss: {train_loss:0.3f}
+        Validation loss: {val_loss:0.3f}, accuracy score:
+        {val_accuracy:0.3f}
         ========================================================''')
     print("Confusion Matrix: ")
-    print(confusion_m)
-    'Might put F1 score in here'
+    print(confusion_matrix)
 
+    if val_loss < best_model_results['val_loss']:
+        best_model_results['epoch'] = epoch
+        best_model_results['val_loss']= val_loss
+        best_model_results['train_loss'] = train_loss
+        best_model_results['val_accuracy'] = val_accuracy
+        best_model_results['confusion_matrix'] = confusion_matrix
+        best_model = initialize_model(device, model.state_dict())
+    else:
+        early_stop_counter+=1
+    return best_model_results, best_model, early_stop_counter
+    
+
+
+def save_best_model(best_model, best_epoch, results_path):
+    torch.save({'epoch': best_epoch,
+                'state_dict': best_model.cpu().state_dict(),
+                    },results_path.joinpath(f'epoch_{best_epoch}'))
+
+
+#Fine-tunes the model on a center
 def fine_tune_local_train(model,data,opt,criterion,fold_splits):
-    dataset = data
     fold_splits = fold_splits[fold]
-    if not config['federated']['type'] in ['CIIL', 'SWA']:
-        model.to('cpu')
-    if config['cvtype'] == 'LCO':
-        test_index = fold_splits[1]
-        print(test_index)
-        test_set = {test_index: dataset[test_index]}
+    test_index = fold_splits[1]
+    test_set = {test_index: data[test_index]}
     return local_train(test_set, model, opt, criterion, device, fold=fold, test=False)
 
-def freeze_layers(model):
-    for param in model.parameters():
-        param.requires_grad = False
-    return model
 
-
-def test(data,model,opt,criterion,fold_splits):
-    #Test
-    dataset = data
+#Tests model on a full center
+def test_on_center(data,model,opt,criterion,fold_splits):
     fold_splits = fold_splits[fold]
-    if config['cvtype'] == 'LCO':
-        test_index = fold_splits[1]
-        print(test_index)
-        test_set = {test_index: dataset[test_index]}
+    test_index = fold_splits[1]
+    test_set = {test_index: data[test_index]}
     return local_train(test_set, model, opt, criterion, device, fold=fold, test=True)
 
 
 if __name__=='__main__':
     model = load_model()
-    #model = freeze_layers(model)
     data, fold_splits = load_data()
     criterion, opt = set_crit_opt(model)
     model_new = model
     opt_new = opt
+    num_epochs = config['num_epochs']
+    early_stop_counter, best_loss = 0, 10000
+    best_model_results = dict()
+    best_model_results['val_loss'] = best_loss
+    best_model = model
 
-    for epoch in range(0,30):
-        model_new,opt_new,_, _, train_loss_avg, val_loss_avg, val_accuracy_avg, confusion_m = fine_tune_local_train(model_new,data,opt_new,criterion,fold_splits)
+    #_, _, _, test_predictions, _, _, test_accuracy_avg, test_confusion_matrix = test_on_center(data,model_new,opt_new,criterion,fold_splits) #Tests on a full center
+
+   for epoch in range(0,num_epochs):
+        model_new,opt_new,_, _, train_loss, val_loss, val_accuracy, confusion_m = fine_tune_local_train(model_new,data,opt_new,criterion,fold_splits)
         model_new = model_new[0]
         opt_new = opt_new[0]
-        log_and_save(epoch,train_loss_avg,val_loss_avg,val_accuracy_avg,confusion_m)
+        best_model_results, best_model,early_stop_counter = log_results(epoch,train_loss,val_loss,val_accuracy,confusion_m,best_model_results,best_model,early_stop_counter)
+        print(best_model_results)
+        if early_stop_counter == config['early_stop_checkpoint']: 
+            print("Reached early stop checkpoint")
+            break
+    print("The Best model is")
+    print(best_model_results)
+    #save_best_model(best_model, best_model_results['epoch'], config['output_model_storage'])
+        
 
