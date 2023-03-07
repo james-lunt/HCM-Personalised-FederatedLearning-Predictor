@@ -307,6 +307,7 @@ def local_train(dataset, model, opt, criterion, device, fold, test=False):
         else:
             training_loader, validation_loader, test_loader = dl.load(fold_index=fold)
         if test:
+            print("Hi! Testing!")
             _, _, predictions, epoch_losses, epoch_accuracies, epoch_cm = run_epoch(fold, test_loader, model_copy, opt_copy, criterion, device, is_training = False, worker=worker)
             #### Log
             with open(VARIABLE_STORAGE.joinpath('log.pkl'), 'rb') as handle:
@@ -324,8 +325,13 @@ def local_train(dataset, model, opt, criterion, device, fold, test=False):
             accuracy_scores_v.append(epoch_accuracies)
             confusion_m.append(epoch_cm)
             local_predictions.append(predictions) #MESHMESH I think we only care about the performance of Global model so perhaps get rid of this
+            print(epoch_cm)
             continue # skip the rest if test mode
+       
+        model_copy, opt_copy, _, epoch_losses, epoch_accuracies, _ = run_epoch(fold, training_loader, model_copy, opt_copy, criterion, device, is_training = True, worker=worker)
+        torch.cuda.empty_cache()
 
+        train_losses.append(epoch_losses) #this is an approximation
         # Validation comes before training, because we want to use the combined model.
         _, _, predictions, epoch_losses, epoch_accuracies, epoch_cm = run_epoch(fold, validation_loader, model_copy, opt_copy, criterion, device, is_training = False, worker=worker)
         
@@ -333,12 +339,6 @@ def local_train(dataset, model, opt, criterion, device, fold, test=False):
         accuracy_scores_v.append(epoch_accuracies)
         confusion_m.append(epoch_cm)
         local_predictions.append(predictions) # MESHMESH Or this
-
-        model_copy, opt_copy, _, epoch_losses, epoch_accuracies, _ = run_epoch(fold, training_loader, model_copy, opt_copy, criterion, device, is_training = True, worker=worker)
-        torch.cuda.empty_cache()
-
-        
-        train_losses.append(epoch_losses) #this is an approximation
 
         if config['federated']['type'] == 'CIIL': # we just need the final model
             continue
