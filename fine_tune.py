@@ -160,37 +160,37 @@ def fine_tune(test_fold,model,data,opt,criterion,num_epochs):
     early_stop_counter, best_loss = 0, 10000
     best_model_results = dict()
     best_model_results['val_loss'] = best_loss
-    model_new = model
-    opt_new = opt
     best_model = model
     best_opt = opt
     training_loader, validation_loader, test_loader = dl.load(fold_index=test_fold) 
 
-    #Accuracy to beat
-    _, _, global_test_predictions, _, global_epoch_accuracies, global_test_confusion_matrix = run_epoch(FOLD,test_loader, model, opt, criterion, DEVICE, is_training = False)
-    print(global_test_confusion_matrix)
-    print(global_test_predictions)
+    if (CONFIG['train_private']!=True):
+        #Accuracy to beat
+        print("Testing Global Model. Fold: " + str(test_fold))
+        _, _, global_test_predictions, _, global_epoch_accuracies, global_test_confusion_matrix = run_epoch(FOLD,test_loader, model, opt, criterion, DEVICE, is_training = False)
+        print(global_test_confusion_matrix)
+        #print(global_test_predictions)
 
     for epoch in range(0, num_epochs):
         #Train
-        model_new, opt_new, _, epoch_losses, _, _ = run_epoch(FOLD,training_loader, model_new, opt_new, criterion, DEVICE,is_training = True)
+        model, opt_new, _, epoch_losses, _, _ = run_epoch(FOLD,training_loader, model, opt, criterion, DEVICE,is_training = True)
         train_loss_avg = np.mean(epoch_losses)
         #Validate
-        _, _, predictions, epoch_losses, epoch_accuracies, confusion_m = run_epoch(FOLD,validation_loader, model_new, opt_new, criterion, DEVICE,is_training = False)
+        _, _, predictions, epoch_losses, epoch_accuracies, confusion_m = run_epoch(FOLD,validation_loader, model, opt, criterion, DEVICE,is_training = False)
         val_loss_avg = np.mean(epoch_losses)
         val_accuracy_avg = np.mean(epoch_accuracies)
         #Log
-        best_model_results,best_model,early_stop_counter = print_results(epoch,train_loss_avg,val_loss_avg,val_accuracy_avg,confusion_m, best_model_results,best_model,early_stop_counter,model_new)
+        best_model_results,best_model,early_stop_counter = print_results(epoch,train_loss_avg,val_loss_avg,val_accuracy_avg,confusion_m, best_model_results,best_model,early_stop_counter,model)
         if early_stop_counter == CONFIG['early_stop_checkpoint']: 
             print("Reached early stop checkpoint")
             break
        # model, opt = initialize_model_running(model)
-    print("Testing")
+    print("Testing Personalised Model. Fold: " + str(test_fold))
     _, _, test_predictions, _, epoch_accuracies, test_confusion_matrix = run_epoch(FOLD,test_loader, best_model, best_opt, criterion, DEVICE, is_training = False)
     #test_accuracy_avg = np.mean(epoch_accuracies)
     #print(test_accuracy_avg)
     print(test_confusion_matrix)
-    print(test_predictions)
+    #print(test_predictions)
             
     return best_model, best_model_results, test_confusion_matrix, global_test_confusion_matrix
 
@@ -199,22 +199,23 @@ if __name__=='__main__':
     warnings.filterwarnings("ignore")  
     warnings.simplefilter('ignore')
 
-    model = load_model()
     data, fold_splits = load_data()
-    criterion, opt = set_crit_opt(model)
-    model_new = model
-    opt_new = opt
+
     num_epochs = CONFIG['num_epochs']
     confusion_matrices_personalised = []
     confusion_matrices_global = []
     cross_val = 'lco' if "lco" in GLOBAL_MODEL else 'ccv'
+    cross_val ="TESTING"
 
-    for test_fold in range(CONFIG['num_folds']):
-        best_model,best_model_results,confusion_matrix_personalised,confusion_matrix_global = fine_tune(test_fold, model_new,data,opt,criterion,num_epochs)
+    for test_fold in range(0,CONFIG['num_folds']):
+        model = load_model()
+        criterion, opt = set_crit_opt(model)
+
+        best_model,best_model_results,confusion_matrix_personalised,confusion_matrix_global = fine_tune(test_fold, model,data,opt,criterion,num_epochs)
         confusion_matrices_personalised.append(confusion_matrix_personalised)
         confusion_matrices_global.append(confusion_matrix_global)
-        print("The Best model is")
-        print(best_model_results)
+        #print("The Best model is")
+        #print(best_model_results)
         save_best_model(best_model, best_model_results['epoch'], test_fold, CENTER,cross_val)
     
     #Log
@@ -222,8 +223,9 @@ if __name__=='__main__':
     average_acc_score_personalised = np.mean(accuracies)
     accuracies,_,_,_ = metrics_from_confusion_matrices(confusion_matrices_global)
     average_acc_score_global = np.mean(accuracies)
-    file = open('Accuracy_Scores.txt', 'w')
-    file.write("Centre: " + CENTER + " Input Model CV: " + cross_val)
-    file.write("Global: " + str(average_acc_score_personalised) + "\n")
-    file.write("Personalised: " + str(average_acc_score_global) + "\n")
+    file_name = cross_val + "_" + CENTER + "_accuracies"
+    file = open(file_name, 'w')
+    file.write("Centre: " + CENTER + " Input Model CV: " + cross_val + "\n")
+    file.write("Global: " + str(average_acc_score_global) + "\n")
+    file.write("Personalised: " + str(average_acc_score_personalised) + "\n")
     file.close()
