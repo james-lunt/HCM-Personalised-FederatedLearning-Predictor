@@ -1,0 +1,2 @@
+Centre: ACDC Input Model CV: ccvGlobal: 0.65625
+Personalised: 0.625
