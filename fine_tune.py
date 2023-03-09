@@ -22,7 +22,8 @@ with open(CONFIG_FILE) as file:
 MODEL_STORAGE = CONFIG['model_storage']
 RESULTS_STORAGE = Path(CONFIG['output_model_storage'])
 TEST_MODEL = CONFIG['lco_model']
-FOLD = CONFIG['validation_center_fold']
+FOLD = CONFIG['center_fold']
+TEST_FOLD = CONFIG['fold']
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CENTER = CONFIG['data']['centres'][FOLD]
 
@@ -48,38 +49,6 @@ def initialize_model(state_dict=None):
         model_copy.load_state_dict(model.state_dict())
     model_copy.to(DEVICE)
     return model_copy
-
-"""def initialize_model_running(model):
-    Model = import_class(CONFIG['model']['arch']['function'])
-    if CONFIG['model']['arch']['args']:
-        model_copy = Model(**CONFIG['model']['arch']['args'])
-    else:
-        model_copy = Model()
-    model_copy.load_state_dict(model.state_dict())
-    model_copy.to(DEVICE)
-
-    Opt = import_class(CONFIG['hyperparameters']['optimizer'])
-    learning_rate = float(CONFIG['hyperparameters']['lr'])
-    if CONFIG['model']['arch']['args']['early_layers_learning_rate']: # if zero then it's freeze
-        # Low shallow learning rates instead of freezing
-        low_lr_list = []
-        high_lr_list = []
-        for name,param in model_copy.named_parameters():
-            if 'fc' not in name:
-                low_lr_list.append(param)
-            else:
-                high_lr_list.append(param)
-        print(f"Initializing optimizer with learning rates {CONFIG['model']['arch']['args']['early_layers_learning_rate']} for the early and {learning_rate} for the final layers")
-        opt_copy = Opt([
-            {'params': low_lr_list, 'lr': float(CONFIG['model']['arch']['args']['early_layers_learning_rate'])},
-            {'params': high_lr_list, 'lr': learning_rate}
-        ], lr=learning_rate)
-    else:
-        print(f"Layer learning mode set to frozen")
-        opt_copy = Opt(model_copy.parameters(), lr=learning_rate)
-    opt_copy.load_state_dict(opt.state_dict())
-    return model_copy,opt_copy"""
-
 
 #Loads the pretrained the model or initialises a new one
 def load_model():
@@ -193,14 +162,14 @@ def fine_tune(model,data,opt,criterion,num_epochs):
     opt_new = opt
     best_model = model
     best_opt = opt
-    training_loader, validation_loader, test_loader = dl.load(fold_index=FOLD) #This fold means soething different
+    training_loader, validation_loader, test_loader = dl.load(fold_index=TEST_FOLD) 
 
     #Accuracy to beat
-    _, _, test_predictions, _, epoch_accuracies, test_confusion_matrix = run_epoch(FOLD,test_loader, best_model, opt=opt, criterion=criterion, device=DEVICE, is_training = False)
-    test_accuracy_avg = np.mean(epoch_accuracies)
-    print(test_accuracy_avg)
-    print(test_confusion_matrix)
-    print(test_predictions)
+    _, _, initial_test_predictions, _, initial_epoch_accuracies, initial_test_confusion_matrix = run_epoch(FOLD,test_loader, model, opt, criterion, DEVICE, is_training = False)
+    initial_test_accuracy_avg = np.mean(initial_epoch_accuracies)
+    print(initial_test_accuracy_avg)
+    print(initial_test_confusion_matrix)
+    print(initial_test_predictions)
 
     for epoch in range(0, num_epochs):
         #Train
@@ -218,8 +187,9 @@ def fine_tune(model,data,opt,criterion,num_epochs):
        # model, opt = initialize_model_running(model)
     print("Testing")
     _, _, test_predictions, _, epoch_accuracies, test_confusion_matrix = run_epoch(FOLD,test_loader, best_model, best_opt, criterion, DEVICE, is_training = False)
-    test_accuracy_avg = np.mean(epoch_accuracies)
-    print(test_accuracy_avg)
+    #test_accuracy_avg = np.mean(epoch_accuracies)
+    #print(test_accuracy_avg)
+    #F1 Score in here
     print(test_confusion_matrix)
     print(test_predictions)
             

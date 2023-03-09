@@ -33,11 +33,11 @@ class ResNet3D_18_Classifier(nn.Sequential):
         elif early_layers_learning_rate:
             print(f"Early layers will use a learning rate of {early_layers_learning_rate}")
         #Reshape
-        print(f"Initializing network for {in_ch} channel input")
+        #print(f"Initializing network for {in_ch} channel input")
         if in_ch!=3:
             self.model.stem[0] =  nn.Conv3d(in_ch, 64, kernel_size=(3, 7, 7), stride=(1, 2, 2), padding=(1, 3, 3), bias=False)
         self.model.fc = nn.Linear(linear_ch, out_ch)
-        print(f"Linear layer initialized with {linear_ch} number of channels.")
+        #print(f"Linear layer initialized with {linear_ch} number of channels.")
         if out_ch == 1:
             self.out = nn.Sigmoid()
         else:
