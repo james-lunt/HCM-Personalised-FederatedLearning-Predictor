@@ -26,6 +26,11 @@ GLOBAL_MODEL = CONFIG['global_model']
 FOLD = CONFIG['center_fold']
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CENTER = CONFIG['data']['centres'][FOLD]
+SAVE_MODELS = CONFIG['save_models']
+
+NUM_FOLDS = CONFIG['num_folds']
+NUM_EPOCHS = CONFIG['num_epochs']
+
 
 
 #Start Model
@@ -43,18 +48,16 @@ def initialize_model(state_dict=None):
     else:
         model_copy = Model()
     if state_dict != None:
-        print("Yellow")
         model_copy.load_state_dict(state_dict)
     else:
-        model_copy.load_state_dict(model.state_dict())
+        model_copy.load_state_dict(model_copy.state_dict())
     model_copy.to(DEVICE)
     return model_copy
 
 #Loads the pretrained the model or initialises a new one
 def load_model():
     if CONFIG['train_private']: 
-        Model = import_class(CONFIG['model']['arch']['function'])
-        model = Model(**CONFIG['model']['arch']['args'])
+        model = initialize_model(None)
         print("Training without Global Model")
     else: 
         checkpoint = torch.load(MODEL_STORAGE + GLOBAL_MODEL)['state_dict']
@@ -154,7 +157,7 @@ def test_on_center(data,model,opt,criterion,fold_splits):
     test_set = {test_index: data[test_index]}
     return local_train(test_set, model, opt, criterion, DEVICE, FOLD, True)
 
-def fine_tune(test_fold,model,data,opt,criterion,num_epochs):
+def fine_tune(test_fold,model,data,opt,criterion):
     dl = data[CENTER][1]
 
     early_stop_counter, best_loss = 0, 10000
@@ -167,30 +170,30 @@ def fine_tune(test_fold,model,data,opt,criterion,num_epochs):
     if (CONFIG['train_private']!=True):
         #Accuracy to beat
         print("Testing Global Model. Fold: " + str(test_fold))
-        _, _, global_test_predictions, _, global_epoch_accuracies, global_test_confusion_matrix = run_epoch(FOLD,test_loader, model, opt, criterion, DEVICE, is_training = False)
+        _, _, global_test_predictions, _, _, global_test_confusion_matrix = run_epoch(FOLD,test_loader, model, opt, criterion, DEVICE, is_training = False)
         print(global_test_confusion_matrix)
         #print(global_test_predictions)
 
-    for epoch in range(0, num_epochs):
+    for epoch in range(0, NUM_EPOCHS):
         #Train
         model, opt_new, _, epoch_losses, _, _ = run_epoch(FOLD,training_loader, model, opt, criterion, DEVICE,is_training = True)
         train_loss_avg = np.mean(epoch_losses)
+
         #Validate
         _, _, predictions, epoch_losses, epoch_accuracies, confusion_m = run_epoch(FOLD,validation_loader, model, opt, criterion, DEVICE,is_training = False)
         val_loss_avg = np.mean(epoch_losses)
         val_accuracy_avg = np.mean(epoch_accuracies)
+
         #Log
         best_model_results,best_model,early_stop_counter = print_results(epoch,train_loss_avg,val_loss_avg,val_accuracy_avg,confusion_m, best_model_results,best_model,early_stop_counter,model)
         if early_stop_counter == CONFIG['early_stop_checkpoint']: 
             print("Reached early stop checkpoint")
             break
-       # model, opt = initialize_model_running(model)
+    
+    #Test
     print("Testing Personalised Model. Fold: " + str(test_fold))
     _, _, test_predictions, _, epoch_accuracies, test_confusion_matrix = run_epoch(FOLD,test_loader, best_model, best_opt, criterion, DEVICE, is_training = False)
-    #test_accuracy_avg = np.mean(epoch_accuracies)
-    #print(test_accuracy_avg)
     print(test_confusion_matrix)
-    #print(test_predictions)
             
     return best_model, best_model_results, test_confusion_matrix, global_test_confusion_matrix
 
@@ -201,22 +204,22 @@ if __name__=='__main__':
 
     data, fold_splits = load_data()
 
-    num_epochs = CONFIG['num_epochs']
     confusion_matrices_personalised = []
     confusion_matrices_global = []
     cross_val = 'lco' if "lco" in GLOBAL_MODEL else 'ccv'
     cross_val ="TESTING"
 
-    for test_fold in range(0,CONFIG['num_folds']):
+    for test_fold in range(0,NUM_FOLDS):
         model = load_model()
         criterion, opt = set_crit_opt(model)
 
-        best_model,best_model_results,confusion_matrix_personalised,confusion_matrix_global = fine_tune(test_fold, model,data,opt,criterion,num_epochs)
+        best_model,best_model_results,confusion_matrix_personalised,confusion_matrix_global = fine_tune(test_fold, model,data,opt,criterion)
         confusion_matrices_personalised.append(confusion_matrix_personalised)
         confusion_matrices_global.append(confusion_matrix_global)
         #print("The Best model is")
         #print(best_model_results)
-        save_best_model(best_model, best_model_results['epoch'], test_fold, CENTER,cross_val)
+        if SAVE_MODELS:
+            save_best_model(best_model, best_model_results['epoch'], test_fold, CENTER,cross_val)
     
     #Log
     accuracies,_,_,_ = metrics_from_confusion_matrices(confusion_matrices_personalised)

@@ -37,4 +37,5 @@ hyperparameters:
     optimizer : torch.optim.Adam
     lr : 0.01
 
-train_private: False #Makes the program train a fresh model on one center
+train_private: True #Makes the program train a fresh model on one center
+save_models: False #Save the best epoch of every training session
