@@ -24,13 +24,13 @@ MODEL_STORAGE = CONFIG['model_storage']
 RESULTS_STORAGE = Path(CONFIG['output_model_storage'])
 GLOBAL_MODEL = CONFIG['global_model']
 FOLD = CONFIG['center_fold']
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CENTER = CONFIG['data']['centres'][FOLD]
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 SAVE_MODELS = CONFIG['save_models']
+TRAIN_PRIVATE = ['train_private']
 
 NUM_FOLDS = CONFIG['num_folds']
 NUM_EPOCHS = CONFIG['num_epochs']
-
 
 
 #Start Model
@@ -56,7 +56,7 @@ def initialize_model(state_dict=None):
 
 #Loads the pretrained the model or initialises a new one
 def load_model():
-    if CONFIG['train_private']: 
+    if TRAIN_PRIVATE: 
         model = initialize_model(None)
         print("Training without Global Model")
     else: 
@@ -151,6 +151,7 @@ def fine_tune(test_fold,model,data,opt,criterion):
     best_model = model
     best_opt = opt
     training_loader, validation_loader, test_loader = dl.load(fold_index=test_fold) 
+    global_test_confusion_matrix = []
 
     if (CONFIG['train_private']!=True):
         #Accuracy to beat
@@ -187,12 +188,13 @@ if __name__=='__main__':
     warnings.filterwarnings("ignore")  
     warnings.simplefilter('ignore')
 
-    data, fold_splits = load_data()
+    data, _ = load_data()
 
     confusion_matrices_personalised = []
     confusion_matrices_global = []
     cross_val = 'lco' if "lco" in GLOBAL_MODEL else 'ccv'
 
+    print("Running " + GLOBAL_MODEL + " on " + CENTER + " with " + cross_val + " Cross Validation ")
     for test_fold in range(0,NUM_FOLDS):
         model = load_model()
         criterion, opt = set_crit_opt(model)
@@ -206,13 +208,15 @@ if __name__=='__main__':
             save_best_model(best_model, best_model_results['epoch'], test_fold, CENTER,cross_val)
     
     #Log
+    tl = 'fresh_model' if TRAIN_PRIVATE else 'transfer_learn'
+    file_name = cross_val + "_" + CENTER + "_"+ tl + "_accuracies"
+    file = open(file_name, 'w')
     accuracies,_,_,_ = metrics_from_confusion_matrices(confusion_matrices_personalised)
     average_acc_score_personalised = np.mean(accuracies)
-    accuracies,_,_,_ = metrics_from_confusion_matrices(confusion_matrices_global)
-    average_acc_score_global = np.mean(accuracies)
-    file_name = cross_val + "_" + CENTER + "_accuracies"
-    file = open(file_name, 'w')
-    file.write("Centre: " + CENTER + " Input Model CV: " + cross_val + "\n")
-    file.write("Global: " + str(average_acc_score_global) + "\n")
+    file.write("Centre: " + CENTER + " Input Model CV: " + cross_val + " " + tl + "\n")
+    if not TRAIN_PRIVATE:
+        accuracies,_,_,_ = metrics_from_confusion_matrices(confusion_matrices_global)
+        average_acc_score_global = np.mean(accuracies)
+        file.write("Global: " + str(average_acc_score_global) + "\n")
     file.write("Personalised: " + str(average_acc_score_personalised) + "\n")
     file.close()
