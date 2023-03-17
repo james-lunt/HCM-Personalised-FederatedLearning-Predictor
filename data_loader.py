@@ -381,7 +381,7 @@ class MultiDataLoader():
                 ], p=0.5)
 
             ])
-        elif transformations == 'S':
+        if transformations == 'S':
             training_transform = Compose([
                 HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
@@ -395,7 +395,7 @@ class MultiDataLoader():
                 ], p=1)
 
             ])
-        elif transformations == 'I':
+        if transformations == 'I':
             training_transform = Compose([
                 HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
@@ -408,7 +408,7 @@ class MultiDataLoader():
                 ], p=0.5)
 
             ])
-        elif transformations == 'SI':
+        if transformations == 'SI':
             training_transform = Compose([
                 HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
@@ -432,8 +432,9 @@ class MultiDataLoader():
                 ], p=0.5)
 
             ])
-        elif transformations == 'N':
-            training_transform = Compose([
+        if transformations == 'B':
+            print("Yellow bun")
+            training_transform_n = Compose([
                 HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
                 RescaleIntensity((0,1))
@@ -493,6 +494,11 @@ class MultiDataLoader():
         
         training_set = tio.SubjectsDataset(
             training_subjects, transform=training_transform)
+       # training_set_si_transform = tio.SubjectsDataset(
+        #    training_subjects, transform=training_transform_n)
+        #training_set+=training_set_si_transform
+        print("Yellow Bunny")
+        print(len(training_set))
 
         validation_set = tio.SubjectsDataset(
             validation_subjects, transform=test_transform)
