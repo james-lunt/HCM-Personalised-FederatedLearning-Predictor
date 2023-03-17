@@ -133,12 +133,14 @@ def print_results(epoch,train_loss,val_loss,val_accuracy,confusion_matrix, best_
     return best_model_results, best_model, early_stop_counter
     
 
-#Tests model on a full center
-def test_on_center(data,model,opt,criterion,fold_splits):
-    fold_splits = fold_splits[FOLD]
-    test_index = fold_splits[1]
-    test_set = {test_index: data[test_index]}
-    return local_train(test_set, model, opt, criterion, DEVICE, FOLD, True)
+#Saves the model produced by the epoch with the best generalisation
+def save_best_model(best_model, best_epoch,fold,center,cross_val):
+    torch.save({'epoch': best_epoch,
+                'center': center,
+                'cross_val': cross_val,
+                'state_dict': best_model.cpu().state_dict(),
+                    },RESULTS_STORAGE.joinpath(f'cross_val_{cross_val}_center_{center}_fold_{fold}'))
+
 
 def fine_tune(test_fold,model,data,opt,criterion):
     dl = data[CENTER][1]
