@@ -1,18 +1,13 @@
-num_epochs: 1  #Number of epochs to fine tune
+num_epochs: 5  #Number of epochs to fine tune
 early_stop_checkpoint: 10
 input_model_storage: "../Model Epochs/"
 output_model_storage: "../Result Models/"
 
 model_storage: "../Model Epochs/"
-models: 
-    - "epoch_39_lco_vall"
-    - "epoch_26_lco_sagrada"
-    - "epoch_18_lco_acdc" 
-    - "epoch_36_lco_sanpau"
-    - "epoch_27_fold0_ccv"
+global_model:  "epoch_36_lco_sanpau"
     
 center_fold: 2 #0 Vall 1 Sag 2 ACDC 3 San. Used when testing on whole center
-num_folds: 1 #number of folds for data split
+num_folds: 5 #number of folds for data split
 
 train_loss_threshold: 1.6 #Needs to be set since sometimes Validation loss is not reperesntative. E.g. When the model guesses 
 
@@ -43,5 +38,5 @@ hyperparameters:
     optimizer : torch.optim.Adam
     lr : 0.01
 
-train_private: True #Makes the program train a fresh model on one center
+train_private: False #Makes the program train a fresh model on one center
 save_models: False #Save the best epoch of every training session

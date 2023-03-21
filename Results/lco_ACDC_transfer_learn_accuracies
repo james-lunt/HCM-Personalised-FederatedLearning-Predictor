@@ -1,0 +1,6 @@
+Centre: ACDC Input Model CV: lco transfer_learn
+Global: 0.5125
+Personalised: 0.625
+
+Uses triple data
+5 epochs

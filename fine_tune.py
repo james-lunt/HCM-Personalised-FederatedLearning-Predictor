@@ -27,7 +27,7 @@ FOLD = CONFIG['center_fold']
 CENTER = CONFIG['data']['centres'][FOLD]
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 SAVE_MODELS = CONFIG['save_models']
-TRAIN_PRIVATE = ['train_private']
+TRAIN_PRIVATE = CONFIG['train_private']
 
 NUM_FOLDS = CONFIG['num_folds']
 NUM_EPOCHS = CONFIG['num_epochs']
@@ -117,8 +117,8 @@ def print_results(epoch,train_loss,val_loss,val_accuracy,confusion_matrix, best_
         Validation loss: {val_loss:0.3f}, accuracy score:
         {val_accuracy:0.3f}
         ========================================================''')
-    print("Confusion Matrix: ")
-    print(confusion_matrix)
+    #print("Confusion Matrix: ")
+    #print(confusion_matrix)
 
     if val_loss < best_model_results['val_loss']: #and train_loss < CONFIG['train_loss_threshold']: #and val_loss > 0.09:
         best_model_results['epoch'] = epoch
@@ -200,6 +200,10 @@ if __name__=='__main__':
         criterion, opt = set_crit_opt(model)
 
         best_model,best_model_results,confusion_matrix_personalised,confusion_matrix_global = fine_tune(test_fold, model,data,opt,criterion)
+        print("Best Epoch: " + best_model_results['epoch'] + "\n" +
+              "Validation Loss: " + best_model_results['val_loss'] + "\n" +
+              "Train Loss: " + best_model_results['train_loss'] + "\n" +
+              "Test Accuracy: " + best_model_results['val_accuracy'])
         confusion_matrices_personalised.append(confusion_matrix_personalised)
         confusion_matrices_global.append(confusion_matrix_global)
         #print("The Best model is")
@@ -213,7 +217,7 @@ if __name__=='__main__':
     file = open(file_name, 'w')
     accuracies,_,_,_ = metrics_from_confusion_matrices(confusion_matrices_personalised)
     average_acc_score_personalised = np.mean(accuracies)
-    file.write("Centre: " + CENTER + " Input Model CV: " + cross_val + " " + tl + "\n")
+    file.write("Centre: " + CENTER + " Input Model CV: " + cross_val + " " + tl  + "\n")
     if not TRAIN_PRIVATE:
         accuracies,_,_,_ = metrics_from_confusion_matrices(confusion_matrices_global)
         average_acc_score_global = np.mean(accuracies)

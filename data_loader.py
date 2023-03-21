@@ -395,8 +395,8 @@ class MultiDataLoader():
                 ], p=1)
 
             ])
-        if transformations == 'I':
-            training_transform = Compose([
+        if transformations == 'B':
+            training_transform_s = Compose([
                 HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
                 RescaleIntensity((0,1)),
@@ -491,14 +491,17 @@ class MultiDataLoader():
             training_subjects = [item for sublist in training_subjects for item in sublist]
             validation_subjects = [item for sublist in validation_subjects for item in sublist]
             test_subjects = [item for sublist in test_subjects for item in sublist]
-        
+        print(len(training_subjects))
         training_set = tio.SubjectsDataset(
             training_subjects, transform=training_transform)
-       # training_set_si_transform = tio.SubjectsDataset(
-        #    training_subjects, transform=training_transform_n)
-        #training_set+=training_set_si_transform
+        training_set_si_transform = tio.SubjectsDataset(
+            training_subjects, transform=training_transform_n)
+        training_set_s_transform = tio.SubjectsDataset(
+            training_subjects, transform=training_transform_s)
+        training_set+=training_set_si_transform
+        #training_set+=training_set_s_transform
         print("Yellow Bunny")
-        print(len(training_set))
+        #print(len(training_set))
 
         validation_set = tio.SubjectsDataset(
             validation_subjects, transform=test_transform)
