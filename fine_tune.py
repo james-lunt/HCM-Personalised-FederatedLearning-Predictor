@@ -157,6 +157,7 @@ def fine_tune(test_fold,model,data,opt,criterion):
         #Accuracy to beat
         print("Testing Global Model. Fold: " + str(test_fold))
         _, _, global_test_predictions, _, _, global_test_confusion_matrix = run_epoch(FOLD,test_loader, model, opt, criterion, DEVICE, is_training = False)
+        print("Global Model Confusin Matrix:")
         print(global_test_confusion_matrix)
         #print(global_test_predictions)
 
@@ -179,6 +180,7 @@ def fine_tune(test_fold,model,data,opt,criterion):
     #Test
     print("Testing Personalised Model. Fold: " + str(test_fold))
     _, _, test_predictions, _, epoch_accuracies, test_confusion_matrix = run_epoch(FOLD,test_loader, best_model, best_opt, criterion, DEVICE, is_training = False)
+    print("Personalised Model Confusion Matrix")
     print(test_confusion_matrix)
             
     return best_model, best_model_results, test_confusion_matrix, global_test_confusion_matrix
@@ -189,6 +191,7 @@ if __name__=='__main__':
     warnings.simplefilter('ignore')
 
     data, _ = load_data()
+    print(len(data[CENTER][1]))
 
     confusion_matrices_personalised = []
     confusion_matrices_global = []
@@ -200,10 +203,10 @@ if __name__=='__main__':
         criterion, opt = set_crit_opt(model)
 
         best_model,best_model_results,confusion_matrix_personalised,confusion_matrix_global = fine_tune(test_fold, model,data,opt,criterion)
-        print("Best Epoch: " + best_model_results['epoch'] + "\n" +
-              "Validation Loss: " + best_model_results['val_loss'] + "\n" +
-              "Train Loss: " + best_model_results['train_loss'] + "\n" +
-              "Test Accuracy: " + best_model_results['val_accuracy'])
+        print("Best Epoch: " + str(best_model_results['epoch']) + "\n" +
+              "Validation Loss: " + str(best_model_results['val_loss']) + "\n" +
+              "Train Loss: " + str(best_model_results['train_loss']) + "\n" +
+              "Test Accuracy: " + str(best_model_results['val_accuracy']))
         confusion_matrices_personalised.append(confusion_matrix_personalised)
         confusion_matrices_global.append(confusion_matrix_global)
         #print("The Best model is")

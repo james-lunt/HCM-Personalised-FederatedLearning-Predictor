@@ -30,8 +30,8 @@ class ResNet3D_18_Classifier(nn.Sequential):
             print("Freezing layers")
             for p in self.model.parameters():
                 p.requires_grad = False
-        elif early_layers_learning_rate:
-            print(f"Early layers will use a learning rate of {early_layers_learning_rate}")
+        #elif early_layers_learning_rate:
+            #print(f"Early layers will use a learning rate of {early_layers_learning_rate}")
         #Reshape
         #print(f"Initializing network for {in_ch} channel input")
         if in_ch!=3:
@@ -59,8 +59,8 @@ class ResNet18Classifier(nn.Sequential):
             print("Freezing layers")
             for p in self.model.parameters():
                 p.requires_grad = False
-        elif early_layers_learning_rate:
-            print(f"Early layers will use a learning rate of {early_layers_learning_rate}")
+        #elif early_layers_learning_rate:
+            #print(f"Early layers will use a learning rate of {early_layers_learning_rate}")
         self.model.fc = nn.Linear(512, out_ch)
 
         if isinstance(self.model.fc, nn.Linear):

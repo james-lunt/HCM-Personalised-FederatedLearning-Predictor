@@ -1,0 +1,6 @@
+Centre: Vall d'Hebron Input Model CV: lco transfer_learn
+Global: 0.7266666666666668
+Personalised: 0.8255555555555555
+
+double data
+5 epochs

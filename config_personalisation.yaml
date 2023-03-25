@@ -1,12 +1,12 @@
-num_epochs: 5  #Number of epochs to fine tune
-early_stop_checkpoint: 10
+num_epochs: 100  #Number of epochs to fine tune
+early_stop_checkpoint: 20
 input_model_storage: "../Model Epochs/"
 output_model_storage: "../Result Models/"
 
 model_storage: "../Model Epochs/"
-global_model:  "epoch_36_lco_sanpau"
+global_model:  "epoch_27_fold0_ccv"
     
-center_fold: 2 #0 Vall 1 Sag 2 ACDC 3 San. Used when testing on whole center
+center_fold: 1 #0 Vall 1 Sag 2 ACDC 3 San. Used when testing on whole center
 num_folds: 5 #number of folds for data split
 
 train_loss_threshold: 1.6 #Needs to be set since sometimes Validation loss is not reperesntative. E.g. When the model guesses 

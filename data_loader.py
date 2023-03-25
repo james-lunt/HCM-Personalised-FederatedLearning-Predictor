@@ -368,7 +368,9 @@ class MultiDataLoader():
             landmarks = self.landmarks
         print(f"Using landmarks {landmarks}")
 
+        num_transformations = 0
         if transformations == 'B':
+            num_transformations+=1
             print("Transformation = Basic")
             training_transform = Compose([
                 HistogramStandardization({'mri': landmarks}), #correct this mean
@@ -382,6 +384,7 @@ class MultiDataLoader():
 
             ])
         if transformations == 'S':
+            num_transformations+=1
             training_transform = Compose([
                 HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
@@ -396,6 +399,7 @@ class MultiDataLoader():
 
             ])
         if transformations == 'B':
+            num_transformations+=1
             training_transform_s = Compose([
                 HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
@@ -409,6 +413,7 @@ class MultiDataLoader():
 
             ])
         if transformations == 'SI':
+            num_transformations+=1
             training_transform = Compose([
                 HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
@@ -433,7 +438,7 @@ class MultiDataLoader():
 
             ])
         if transformations == 'B':
-            print("Yellow bun")
+            num_transformations+=1
             training_transform_n = Compose([
                 HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
@@ -480,43 +485,56 @@ class MultiDataLoader():
                 test_subjects = [j for i in test_subjects for j in i]
                 print(f"Fold {fold_index} (test center {indices[1]})")
         else:
-            indices = self.fold_indices[fold_index]
-            training_subjects = np.array(self.subjects)[indices[0]].tolist()
-            self.train_set_length = len(training_subjects)
-            validation_subjects = np.array(self.subjects)[indices[1]].tolist()
-            test_subjects = np.array(self.subjects)[indices[2]].tolist()
-            print(f"Fold {fold_index} (test indices {indices[2].tolist()})")
+            #indices = self.fold_indices[fold_index]
+            #training_subjects = np.array(self.subjects)[indices[0]].tolist()
+            #self.train_set_length = len(training_subjects)
+            #validation_subjects = np.array(self.subjects)[indices[1]].tolist()
+            #test_subjects = np.array(self.subjects)[indices[2]].tolist()
+            #training_subjects = np.array(self.subjects)[indices[0]].tolist()
+            start_index = fold_index*int(0.2*len(self.subjects))
+            end_index = (fold_index+1)*int(0.2*len(self.subjects))
+            test_indices = [i for i in range(start_index,end_index)]
+            train_indices = [i for i in range(len(self.subjects)) if i not in test_indices]
+            np.random.shuffle(train_indices)
+            train_val_split = int(len(train_indices)*0.9)
+            val_indices = train_indices[train_val_split:]
+            train_indices = train_indices[:train_val_split]
+            print(test_indices)
+            print(train_indices)
+            print(val_indices)
+            training_subjects = np.array(self.subjects)[train_indices].tolist()
+            test_subjects = np.array(self.subjects)[test_indices].tolist()
+            validation_subjects = np.array(self.subjects)[val_indices].tolist()
+            #print(f"Fold {af} (test indices {indices[2].tolist()})")
 
         if isinstance(training_subjects[0], list):
             training_subjects = [item for sublist in training_subjects for item in sublist]
             validation_subjects = [item for sublist in validation_subjects for item in sublist]
             test_subjects = [item for sublist in test_subjects for item in sublist]
-        print(len(training_subjects))
         training_set = tio.SubjectsDataset(
             training_subjects, transform=training_transform)
         training_set_si_transform = tio.SubjectsDataset(
             training_subjects, transform=training_transform_n)
         training_set_s_transform = tio.SubjectsDataset(
             training_subjects, transform=training_transform_s)
-        training_set+=training_set_si_transform
+        #training_set+=training_set_si_transform
         #training_set+=training_set_s_transform
-        print("Yellow Bunny")
         #print(len(training_set))
 
         validation_set = tio.SubjectsDataset(
             validation_subjects, transform=test_transform)
         
-        if not len(test_subjects) < len(training_subjects): # LCO testing phase will not meet this requirement
-            print('Training set:', len(training_set)/2, 'subjects')
-            print('Validation set:', len(validation_set)/2, 'subjects')
+        #if not len(test_subjects) < len(training_subjects): # LCO testing phase will not meet this requirement
+        print('Training set:', len(training_set), 'subjects')
+        print('Validation set:', len(validation_set), 'subjects')
 
-        if not test_subjects:
-            return training_set, validation_set, None
+        #if not test_subjects:
+         #   return training_set, validation_set, None
             
         test_set = tio.SubjectsDataset(
             test_subjects, transform=test_transform)
 
-        print('Test set:', len(test_set)/2, 'subjects')
+        print('Test set:', len(test_set), 'subjects')
         return training_set, validation_set, test_set 
 
     def load(self, fold_index, transformations=config['data']['transformations'], LCO_FL_test=False):
