@@ -361,6 +361,7 @@ class MultiDataLoader():
         return np.array(self.subjects), np.array(self.pathologies)
 
     def get_dataset(self, fold_index, transformations=config['data']['transformations'], LCO_FL_test=False): #cross validation hardcoded to 10 splits
+        transformations_size = config['data']['num_transformations']
     # Transform and define dataset object
         if config['cvtype'] == 'LCO':
             landmarks = self.landmarks[fold_index]
@@ -369,11 +370,12 @@ class MultiDataLoader():
         print(f"Using landmarks {landmarks}")
 
         num_transformations = 0
-        if transformations == 'B':
+        training_transforms = []
+        if transformations_size > 1:
             num_transformations+=1
             print("Transformation = Basic")
             training_transform = Compose([
-                HistogramStandardization({'mri': landmarks}), #correct this mean
+                #HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
                 RescaleIntensity((0,1)),
                 OneOf([
@@ -383,10 +385,12 @@ class MultiDataLoader():
                 ], p=0.5)
 
             ])
-        if transformations == 'S':
+            training_transforms.append(training_transform)
+        if transformations_size > 3:
             num_transformations+=1
+            print("Transformation = Shape")
             training_transform = Compose([
-                HistogramStandardization({'mri': landmarks}), #correct this mean
+                #HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
                 RescaleIntensity((0,1)),
                 OneOf([
@@ -398,10 +402,12 @@ class MultiDataLoader():
                 ], p=1)
 
             ])
-        if transformations == 'B':
+            training_transforms.append(training_transform)
+        if transformations_size > 2:
+            print("Transformation = Intensity")
             num_transformations+=1
-            training_transform_s = Compose([
-                HistogramStandardization({'mri': landmarks}), #correct this mean
+            training_transform = Compose([
+                #HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
                 RescaleIntensity((0,1)),
                 OneOf([
@@ -412,10 +418,12 @@ class MultiDataLoader():
                 ], p=0.5)
 
             ])
-        if transformations == 'SI':
+            training_transforms.append(training_transform)
+        if transformations_size > 4:
+            print("Transformation = Shape and Intensity")
             num_transformations+=1
             training_transform = Compose([
-                HistogramStandardization({'mri': landmarks}), #correct this mean
+                #HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
                 RescaleIntensity((0,1)),
                 OneOf([
@@ -437,13 +445,15 @@ class MultiDataLoader():
                 ], p=0.5)
 
             ])
-        if transformations == 'B':
+            training_transforms.append(training_transform)
+        if transformations_size > 0:
             num_transformations+=1
             training_transform_n = Compose([
-                HistogramStandardization({'mri': landmarks}), #correct this mean
+                #HistogramStandardization({'mri': landmarks}), #correct this mean
                 CropOrPad((150,150,10), mask_name='gt'), #sum crop areas to ascertain
                 RescaleIntensity((0,1))
             ])
+            
 
         if config['test_without_hist']:
             print("WARNING: Test set is NOT using Histogram Standardization")
@@ -453,7 +463,7 @@ class MultiDataLoader():
             ])
         else:
             test_transform = Compose([
-                HistogramStandardization({'mri': landmarks}),
+                #HistogramStandardization({'mri': landmarks}),
                 CropOrPad((150,150,10), mask_name='gt'),
                 RescaleIntensity((0,1))
             ])
@@ -511,12 +521,15 @@ class MultiDataLoader():
             training_subjects = [item for sublist in training_subjects for item in sublist]
             validation_subjects = [item for sublist in validation_subjects for item in sublist]
             test_subjects = [item for sublist in test_subjects for item in sublist]
+
+       # if transformations_size == 0:
+            #return tio.SubjectsDataset(training_subjects), tio.SubjectsDataset(validation_subjects), tio.SubjectsDataset(test_subjects)
         training_set = tio.SubjectsDataset(
-            training_subjects, transform=training_transform)
-        training_set_si_transform = tio.SubjectsDataset(
-            training_subjects, transform=training_transform_n)
-        training_set_s_transform = tio.SubjectsDataset(
-            training_subjects, transform=training_transform_s)
+            training_subjects)        
+        for i in training_transforms:
+            training_set += tio.SubjectsDataset(
+                training_subjects, transform=i)
+
         #training_set+=training_set_si_transform
         #training_set+=training_set_s_transform
         #print(len(training_set))

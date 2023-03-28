@@ -46,6 +46,7 @@ data:
         - "SantPau" # HCM vs NOR, TypeError: must be real number, not str. Federated and Centralized
         # - "UKE" # Only DCM
     labels: [0,1]
+    num_transformations: 2
     transformations: B # N, B, S, I, SI (none, basic, shape, intensity, shape&intensity)
 federated:
     isTrue: True

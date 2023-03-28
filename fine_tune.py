@@ -8,6 +8,7 @@ from train_copy import local_train,run_epoch
 from from_confusion_matrices import metrics_from_confusion_matrices
 from tqdm import tqdm
 import pandas as pd
+import time
 import warnings
 # Permanently changes the pandas settings
 pd.set_option('display.max_rows', None)
@@ -19,6 +20,10 @@ pd.set_option('display.max_colwidth', -1)
 CONFIG_FILE = Path('CONFIG_personalisation.yaml')
 with open(CONFIG_FILE) as file:
   CONFIG = yaml.safe_load(file)
+ALTERNATE_CONFIG_FILE = Path('config.yaml')
+with open(ALTERNATE_CONFIG_FILE) as file:
+  ALTERNATE_CONFIG = yaml.safe_load(file)
+NUM_TRANSFORMATIONS = ALTERNATE_CONFIG['data']['num_transformations']
 
 MODEL_STORAGE = CONFIG['model_storage']
 RESULTS_STORAGE = Path(CONFIG['output_model_storage'])
@@ -141,6 +146,12 @@ def save_best_model(best_model, best_epoch,fold,center,cross_val):
                 'state_dict': best_model.cpu().state_dict(),
                     },RESULTS_STORAGE.joinpath(f'cross_val_{cross_val}_center_{center}_fold_{fold}'))
 
+def calculate_time(elapsed_time):
+    hours = int(elapsed_time // 3600)
+    minutes = int((elapsed_time % 3600) // 60)
+    seconds = int(elapsed_time % 60)
+    return "Train Time: {:02d}:{:02d}:{:02d}".format(hours, minutes, seconds)
+
 
 def fine_tune(test_fold,model,data,opt,criterion):
     dl = data[CENTER][1]
@@ -198,6 +209,7 @@ if __name__=='__main__':
     cross_val = 'lco' if "lco" in GLOBAL_MODEL else 'ccv'
 
     print("Running " + GLOBAL_MODEL + " on " + CENTER + " with " + cross_val + " Cross Validation ")
+    train_time_start = time.time()
     for test_fold in range(0,NUM_FOLDS):
         model = load_model()
         criterion, opt = set_crit_opt(model)
@@ -213,10 +225,12 @@ if __name__=='__main__':
         #print(best_model_results)
         if SAVE_MODELS:
             save_best_model(best_model, best_model_results['epoch'], test_fold, CENTER,cross_val)
+    train_time_end = time.time()
+    train_time = calculate_time(train_time_end-train_time_start)
     
     #Log
     tl = 'fresh_model' if TRAIN_PRIVATE else 'transfer_learn'
-    file_name = cross_val + "_" + CENTER + "_"+ tl + "_accuracies"
+    file_name = cross_val + "_" + CENTER + "_"+ tl + "_" + str(NUM_TRANSFORMATIONS) + "_"+ str(NUM_EPOCHS) +"_accuracies"
     file = open(file_name, 'w')
     accuracies,_,_,_ = metrics_from_confusion_matrices(confusion_matrices_personalised)
     average_acc_score_personalised = np.mean(accuracies)
@@ -226,4 +240,5 @@ if __name__=='__main__':
         average_acc_score_global = np.mean(accuracies)
         file.write("Global: " + str(average_acc_score_global) + "\n")
     file.write("Personalised: " + str(average_acc_score_personalised) + "\n")
+    file.write(train_time)
     file.close()
