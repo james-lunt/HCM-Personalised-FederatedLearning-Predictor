@@ -653,6 +653,7 @@ if __name__=='__main__':
         print(f"Total number of parameters: {num_parameters}")
 
         device = torch.device('cuda') if torch.cuda.is_available() else 'cpu'
+        #device = torch.device('cpu')
         print(f"Using device: {device}")
         model.to(device)
         Opt = import_class(config['hyperparameters']['optimizer'])

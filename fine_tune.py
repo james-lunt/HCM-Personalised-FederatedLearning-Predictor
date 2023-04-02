@@ -231,6 +231,7 @@ if __name__=='__main__':
     #Log
     tl = 'fresh_model' if TRAIN_PRIVATE else 'transfer_learn'
     file_name = cross_val + "_" + CENTER + "_"+ tl + "_" + str(NUM_TRANSFORMATIONS) + "_"+ str(NUM_EPOCHS) +"_accuracies"
+    #file_name = "Demo"
     file = open(file_name, 'w')
     accuracies,_,_,_ = metrics_from_confusion_matrices(confusion_matrices_personalised)
     average_acc_score_personalised = np.mean(accuracies)

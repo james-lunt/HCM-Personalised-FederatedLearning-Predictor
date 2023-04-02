@@ -525,7 +525,7 @@ class MultiDataLoader():
        # if transformations_size == 0:
             #return tio.SubjectsDataset(training_subjects), tio.SubjectsDataset(validation_subjects), tio.SubjectsDataset(test_subjects)
         training_set = tio.SubjectsDataset(
-            training_subjects)        
+            training_subjects, training_transform_n)        
         for i in training_transforms:
             training_set += tio.SubjectsDataset(
                 training_subjects, transform=i)

@@ -5,7 +5,7 @@ test_without_hist: False # this will turn off histogramStandardization for test 
 cvtype: CCV #cross validation type (LCO (Leave Center Out) vs CCV (Collaborative Cross Validation))
 hyperparameters:
     num_epochs : 100
-    iteration_number: 21 # this will define the number of batches when doing federated (we want the same number of iterations)
+    iteration_number: 25 # this will define the number of batches when doing federated (we want the same number of iterations)
     training_batch_size : 3  # for centralized
     test_batch_size : 3 #use a higher one for speed up if CUDA memory allows  
     criterion : torch.nn.BCELoss
@@ -46,7 +46,7 @@ data:
         - "SantPau" # HCM vs NOR, TypeError: must be real number, not str. Federated and Centralized
         # - "UKE" # Only DCM
     labels: [0,1]
-    num_transformations: 2
+    num_transformations: 3
     transformations: B # N, B, S, I, SI (none, basic, shape, intensity, shape&intensity)
 federated:
     isTrue: True
