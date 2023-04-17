@@ -1,6 +1,0 @@
-Centre: Sagrada Familia Input Model CV: ccv transfer_learn
-Global: 0.7142857142857142
-Personalised: 0.8214285714285714
-
-{'val_loss': 0.31880681589245796, 'epoch': 3, 'train_loss': 0.35430679842829704, 'val_accuracy': 0.9166666666666666, 'confusion_matrix': array([[4, 0],
-       [1, 7]], dtype=int64)}
